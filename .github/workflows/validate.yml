@@ -1,0 +1,39 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration
+          # Not in home-assistant/brands (yet).
+          ignore: brands
+
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: home-assistant/actions/hassfest@master
+
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.14.4"
+      - run: ruff format --check

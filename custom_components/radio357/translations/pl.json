@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Radio 357",
+        "description": "Zaloguj się kontem Radia 357 (konto.radio357.pl). Większość podcastów wymaga zalogowania, wiele z nich aktywnego patronatu.",
+        "data": {
+          "email": "E-mail",
+          "password": "Hasło"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Radio 357",
+        "description": "Hasło dla {email} zostało odrzucone. Podaj aktualne.",
+        "data": {
+          "password": "Hasło"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nieprawidłowy e-mail lub hasło.",
+      "cannot_connect": "Brak połączenia z serwisem Radia 357."
+    },
+    "abort": {
+      "already_configured": "To konto jest już skonfigurowane.",
+      "reauth_successful": "Ponowne logowanie powiodło się.",
+      "single_instance_allowed": "Można skonfigurować tylko jedno konto."
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Radio 357",
+        "description": "Log in with your Radio 357 account (konto.radio357.pl). Most podcasts need a logged-in account, many of them an active patron subscription.",
+        "data": {
+          "email": "E-mail",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Radio 357",
+        "description": "The password for {email} was rejected. Enter the current one.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid e-mail or password.",
+      "cannot_connect": "Could not reach the Radio 357 service."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Re-authentication was successful.",
+      "single_instance_allowed": "Only one account can be configured."
+    }
+  }
+}

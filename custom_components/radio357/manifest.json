@@ -1,0 +1,19 @@
+{
+  "domain": "radio357",
+  "name": "Radio 357",
+  "codeowners": [
+    "@adorobis"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http",
+    "media_source"
+  ],
+  "documentation": "https://github.com/adorobis/ha-radio357",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/adorobis/ha-radio357/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "1.0.0"
+}
