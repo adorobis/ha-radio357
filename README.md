@@ -54,7 +54,8 @@ Install it from the Home Assistant **Marketplace** as a custom repository:
    to GitHub; it asks for that the first time.
 2. ⋮ → **Custom repositories** → add `https://github.com/adorobis/ha-radio357`, type
    **Integration**.
-3. Open **Radio 357**, **Download** it and restart Home Assistant.
+3. Open **Radio 357** and **Download** it. A first install needs no restart; after
+   an update Home Assistant asks for one.
 
 Or open the repository in your Marketplace directly:
 
@@ -147,8 +148,9 @@ Chromecast, przeglądarka…) z poziomu przeglądarki mediów w Home Assistant.
 **Instalacja:** Ustawienia → **Marketplace** (przy pierwszym dodawaniu repozytorium trzeba
 połączyć Marketplace z GitHubem) → ⋮ → *Custom repositories* →
 `https://github.com/adorobis/ha-radio357` (typ *Integration*) → pobierz **Radio 357** →
-restart HA → Ustawienia → Urządzenia i usługi → *Dodaj integrację* → **Radio 357** →
-zaloguj się e-mailem i hasłem z konto.radio357.pl. Aktualizacje pojawią się potem w HA
+Ustawienia → Urządzenia i usługi → *Dodaj integrację* → **Radio 357** →
+zaloguj się e-mailem i hasłem z konto.radio357.pl. Restart nie jest potrzebny przy pierwszej instalacji, tylko po aktualizacji.
+Aktualizacje pojawią się potem w HA
 jak każde inne.
 
 Integracja nie jest powiązana z Radiem 357. Korzysta z tego samego API co strona i

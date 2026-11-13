@@ -15,5 +15,8 @@ LIVE_STREAMS: dict[str, tuple[str, str, str, bool]] = {
     "aac": ("Radio 357 (na żywo, AAC 128 kbps)", "web", "audio/aac", False),
     "patron": ("Radio 357 (na żywo, AAC, wersja dla patronów)", "www", "audio/aac", True),
 }
+# Shown in the media browser (served by Home Assistant from brand/).
+ICON = f"/api/brands/integration/{DOMAIN}/icon.png"
+# Cover sent to speakers (public, relayed by the image proxy).
 LOGO = "https://media.radio357.pl/2023/08/69019663-8230-41d2-ad39-e7efecc675ec.jpg"
 STATION = "Radio 357"

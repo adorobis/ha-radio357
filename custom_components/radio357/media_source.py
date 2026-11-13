@@ -34,7 +34,7 @@ from homeassistant.core import HomeAssistant
 
 from .api import AccessError, Episode, EpisodePage, Programme, Radio357Client, Radio357Error
 from .audio import audio_path
-from .const import DOMAIN, LIVE_STREAMS, LOGO, STATION
+from .const import DOMAIN, ICON, LIVE_STREAMS, STATION
 
 # Players such as MusicCast hide playable items whose content type isn't
 # an audio/* MIME type, so every playable item carries one.
@@ -205,9 +205,9 @@ class Radio357MediaSource(MediaSource):
         raise BrowseError(f"Unknown folder: {'/'.join(parts)}")
 
     def _root(self) -> BrowseMediaSource:
-        root = _folder("", STATION, LOGO)
+        root = _folder("", STATION, ICON)
         root.children = [
-            _folder("live", "Na żywo", LOGO),
+            _folder("live", "Na żywo", ICON),
             _folder("favs", "Ulubione audycje"),
             _folder(_ident("latest", 1), "Najnowsze podcasty"),
             _folder("progs", "Audycje A–Z"),
@@ -215,7 +215,7 @@ class Radio357MediaSource(MediaSource):
         return root
 
     def _live(self, client: Radio357Client) -> BrowseMediaSource:
-        folder = _folder("live", "Na żywo", LOGO)
+        folder = _folder("live", "Na żywo", ICON)
         folder.children = [
             BrowseMediaSource(
                 domain=DOMAIN,
@@ -225,7 +225,7 @@ class Radio357MediaSource(MediaSource):
                 title=title,
                 can_play=True,
                 can_expand=False,
-                thumbnail=LOGO,
+                thumbnail=ICON,
             )
             for key, (title, _, mime, patrons) in LIVE_STREAMS.items()
             if client.is_patron or not patrons
