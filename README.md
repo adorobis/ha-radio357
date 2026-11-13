@@ -33,7 +33,8 @@ Chromecast, the browser, …) from the Home Assistant media browser.
   as well.
 - **Metadata for players** (title, hosts, cover, duration, size). With
   [MusicCast Extras](https://github.com/adorobis/ha-musiccast-extras) a Yamaha speaker
-  shows them and can seek and resume episodes.
+  shows them, can seek and resume episodes, and can queue them (the next episode starts
+  when one ends).
 - Polish and English UI translations.
 
 ## Requirements
@@ -142,7 +143,7 @@ Chromecast, przeglądarka…) z poziomu przeglądarki mediów w Home Assistant.
 - **Wyszukiwanie** po nazwach audycji, prowadzących i tytułach najnowszych odcinków.
 - Odcinki niedostępne dla Twojego konta są oznaczone 🔒 z informacją, dla kogo są.
 - Przewijanie odcinków, a z [MusicCast Extras](https://github.com/adorobis/ha-musiccast-extras)
-  także tytuł, okładka, czas trwania i wznawianie na głośnikach Yamaha.
+  także tytuł, okładka, czas trwania, wznawianie i kolejka odcinków na głośnikach Yamaha.
 - Wymagane konto Radia 357. Odcinki dla patronów wymagają aktywnego patronatu.
 
 **Instalacja:** Ustawienia → **Marketplace** (przy pierwszym dodawaniu repozytorium trzeba
