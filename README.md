@@ -18,7 +18,10 @@ Chromecast, the browser, …) from the Home Assistant media browser.
 
 - **Media source** "Radio 357" in the media browser:
   - **Na żywo**: live radio as 128 kbps MP3 and 128 kbps AAC. Patron accounts also get
-    the patron variant of the stream.
+    the patron variant of the stream. The AAC variants are raw HE-AAC, which many
+    speakers (Yamaha MusicCast among them) can't play, so media players get them
+    transcoded to 256 kbps MP3 by Home Assistant's ffmpeg; the browser plays the
+    original AAC.
   - **Ulubione audycje**: the programmes you marked as favourite in your account.
   - **Najnowsze podcasty**: the newest episodes of all programmes, 50 per page.
   - **Audycje A–Z**: all programmes (about 470), grouped by first letter. Each one opens
@@ -138,7 +141,8 @@ Nieoficjalna integracja Home Assistant dla Radia 357. Pozwala przeglądać i odt
 radio na żywo oraz archiwum podcastów na dowolnym odtwarzaczu (MusicCast, Sonos,
 Chromecast, przeglądarka…) z poziomu przeglądarki mediów w Home Assistant.
 
-- **Na żywo** (MP3 i AAC 128 kb/s, a dla patronów także wersja patronacka),
+- **Na żywo** (MP3 i AAC 128 kb/s, a dla patronów także wersja patronacka; odtwarzacze
+  dostają wersje AAC przetranskodowane do MP3 256 kb/s, więc grają też na MusicCast),
   **Ulubione audycje**, **Najnowsze podcasty** i **Audycje A–Z**, z podziałem na strony.
 - **Wyszukiwanie** po nazwach audycji, prowadzących i tytułach najnowszych odcinków.
 - Odcinki niedostępne dla Twojego konta są oznaczone 🔒 z informacją, dla kogo są.

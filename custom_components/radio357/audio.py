@@ -8,6 +8,10 @@ Assistant when a media player plays it, so ``requires_auth`` holds.
 Episodes are served with Content-Length and byte ranges (seeking). If the
 upstream drops the connection, the proxy reconnects at the next missing
 byte, fetching a new signed URL when the old one has expired.
+
+The AAC live variants are raw ADTS HE-AAC, which many renderers (MusicCast
+among them) can't play, so for media players they are also served as MP3,
+transcoded by Home Assistant's ffmpeg (``live/<key>.mp3``).
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 from aiohttp import web
+from homeassistant.components.ffmpeg import get_ffmpeg_manager
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -68,12 +73,30 @@ def _unb64(key: str) -> str:
         raise web.HTTPNotFound from err
 
 
-def audio_path(kind: str, key: str) -> str:
-    """Return the proxy path: kind "ep" (episode id) or "live" (stream key)."""
+# MP3 bitrate for transcoded AAC live streams (the source is 128 kbps HE-AAC).
+TRANSCODE_BITRATE = "256k"
+
+
+def audio_path(kind: str, key: str, *, mp3: bool = False) -> str:
+    """Return the proxy path: kind "ep" (episode id) or "live" (stream key).
+
+    mp3: serve an AAC live variant transcoded to MP3.
+    """
     if kind == "live":
-        ext = "aac" if LIVE_STREAMS[key][2] == "audio/aac" else "mp3"
+        ext = "aac" if LIVE_STREAMS[key][2] == "audio/aac" and not mp3 else "mp3"
         return f"{AUDIO_VIEW_URL}/live/{key}.{ext}"
     return f"{AUDIO_VIEW_URL}/ep/{key}.mp3"
+
+
+def _live_key(name: str) -> tuple[str, bool]:
+    """Return (stream key, transcode to MP3) for a live file name."""
+    key, _, ext = name.rpartition(".")
+    if key not in LIVE_STREAMS or ext not in ("mp3", "aac"):
+        raise web.HTTPNotFound
+    aac = LIVE_STREAMS[key][2] == "audio/aac"
+    if ext == "aac" and not aac:
+        raise web.HTTPNotFound
+    return key, aac and ext == "mp3"
 
 
 def live_url(key: str) -> str:
@@ -203,6 +226,86 @@ async def _pipe_episode(
             await asyncio.sleep(min(2 * failures, 10))
 
 
+async def _live_chunks(client: Radio357Client, key: str) -> AsyncIterator[bytes]:
+    """Yield a live stream, reconnecting for as long as it is consumed.
+
+    MP3/AAC decoders resync on the next frame, so a reconnect is just a short
+    gap. The revma URL behind the redirect is short-lived, so always start
+    over at stream.radio357.pl.
+    """
+    failures = 0
+    while failures <= MAX_RETRIES:
+        try:
+            async with client.session.get(
+                live_url(key),
+                headers={"User-Agent": client.headers["User-Agent"], "Icy-MetaData": "0"},
+                timeout=STREAM_TIMEOUT,
+            ) as resp:
+                if resp.status >= 400:
+                    raise _UpstreamFailed(f"HTTP {resp.status}")
+                received = 0
+                async for chunk in resp.content.iter_chunked(CHUNK):
+                    yield chunk
+                    received += len(chunk)
+                    if received > RETRY_RESET_BYTES:
+                        failures, received = 0, 0
+            raise _UpstreamFailed("stream ended")
+        except (_UpstreamFailed, *UPSTREAM_ERRORS) as err:
+            failures += 1
+            _LOGGER.info("Live stream %s dropped (%r), reconnecting (%s)", key, err, failures)
+            await asyncio.sleep(min(2 * failures, 10))
+    _LOGGER.warning("Live stream %s: giving up after %s reconnects", key, MAX_RETRIES)
+
+
+async def _transcode(
+    hass: HomeAssistant,
+    chunks: AsyncIterator[bytes],
+    response: web.StreamResponse,
+    key: str,
+) -> None:
+    """Pipe an ADTS AAC stream through ffmpeg and write MP3 to the player."""
+    # fmt: off
+    proc = await asyncio.create_subprocess_exec(
+        get_ffmpeg_manager(hass).binary,
+        "-hide_banner", "-nostdin", "-loglevel", "error",
+        "-f", "aac", "-i", "pipe:0",
+        "-vn", "-map_metadata", "-1", "-c:a", "libmp3lame", "-b:a", TRANSCODE_BITRATE,
+        # A plain frame stream: no ID3 tag, no Xing header (wrong for live).
+        "-id3v2_version", "0", "-write_xing", "0", "-f", "mp3", "pipe:1",
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    # fmt: on
+    assert proc.stdin and proc.stdout and proc.stderr
+    _LOGGER.debug("Transcoding live stream %s to MP3 (pid %s)", key, proc.pid)
+
+    async def feed() -> None:
+        try:
+            async for chunk in chunks:
+                proc.stdin.write(chunk)
+                await proc.stdin.drain()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            with contextlib.suppress(BrokenPipeError, ConnectionResetError):
+                proc.stdin.close()
+
+    feeder = asyncio.create_task(feed(), name=f"radio357 transcode {key}")
+    try:
+        while chunk := await proc.stdout.read(CHUNK):
+            await _write(response, chunk)
+        err = (await proc.stderr.read()).decode(errors="replace").strip()
+        _LOGGER.warning("ffmpeg stopped transcoding %s: %s", key, err or "no output")
+    finally:
+        feeder.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await feeder
+        if proc.returncode is None:
+            proc.kill()
+        await proc.wait()
+
+
 class Radio357AudioView(HomeAssistantView):
     """Stream Radio 357 audio with the logged-in account."""
 
@@ -269,50 +372,30 @@ class Radio357AudioView(HomeAssistantView):
         return response
 
     async def _serve_live(self, request: web.Request, name: str) -> web.StreamResponse:
-        key = name.rsplit(".", 1)[0]
-        if key not in LIVE_STREAMS:
-            raise web.HTTPNotFound
+        key, transcode = _live_key(name)
         client = self._client()
-        mime = LIVE_STREAMS[key][2]
         response = web.StreamResponse()
-        response.headers["Content-Type"] = mime
+        response.headers["Content-Type"] = "audio/mpeg" if transcode else LIVE_STREAMS[key][2]
         await response.prepare(request)
-        failures = 0
-        # Reconnect for as long as the player listens: MP3/AAC decoders
-        # resync on the next frame, so a reconnect is just a short gap. The
-        # revma URL behind the redirect is short-lived, so always start over.
-        while failures <= MAX_RETRIES:
-            try:
-                async with client.session.get(
-                    live_url(key),
-                    headers={"User-Agent": client.headers["User-Agent"], "Icy-MetaData": "0"},
-                    timeout=STREAM_TIMEOUT,
-                ) as resp:
-                    if resp.status >= 400:
-                        raise _UpstreamFailed(f"HTTP {resp.status}")
-                    received = 0
-                    async for chunk in resp.content.iter_chunked(CHUNK):
-                        await _write(response, chunk)
-                        received += len(chunk)
-                        if received > RETRY_RESET_BYTES:
-                            failures, received = 0, 0
-                raise _UpstreamFailed("stream ended")
-            except _ClientGone:
-                return response
-            except (_UpstreamFailed, *UPSTREAM_ERRORS) as err:
-                failures += 1
-                _LOGGER.info("Live stream %s dropped (%r), reconnecting (%s)", key, err, failures)
-                await asyncio.sleep(min(2 * failures, 10))
-        _LOGGER.warning("Live stream %s: giving up after %s reconnects", key, MAX_RETRIES)
+        chunks = _live_chunks(client, key)
+        try:
+            if transcode:
+                await _transcode(self.hass, chunks, response, key)
+            else:
+                async for chunk in chunks:
+                    await _write(response, chunk)
+        except _ClientGone:
+            pass
+        finally:
+            await chunks.aclose()
         return response
 
     async def head(self, request: web.Request, kind: str, name: str) -> web.StreamResponse:
         """Answer HEAD probes from renderers without streaming the body."""
         if kind == "live":
-            key = name.rsplit(".", 1)[0]
-            if key not in LIVE_STREAMS:
-                raise web.HTTPNotFound
-            return web.Response(headers={"Content-Type": LIVE_STREAMS[key][2]})
+            key, transcode = _live_key(name)
+            mime = "audio/mpeg" if transcode else LIVE_STREAMS[key][2]
+            return web.Response(headers={"Content-Type": mime})
         if kind != "ep":
             raise web.HTTPNotFound
         return await self._serve_episode(request, name, body=False)

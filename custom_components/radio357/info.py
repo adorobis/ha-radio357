@@ -40,7 +40,7 @@ async def async_media_info(hass: HomeAssistant, media_content_id: str) -> dict[s
     parts = [unquote(p) for p in media_content_id[len(PREFIX) :].split("/")]
 
     if len(parts) == 2 and parts[0] == "live" and parts[1] in LIVE_STREAMS:
-        title, _, mime, _ = LIVE_STREAMS[parts[1]]
+        title = LIVE_STREAMS[parts[1]][0]
         artist = STATION
         try:
             now = await client.async_now_playing()
@@ -57,7 +57,8 @@ async def async_media_info(hass: HomeAssistant, media_content_id: str) -> dict[s
             "image": image_path(LOGO),
             "duration": None,
             "size": None,
-            "mime": mime,
+            # Players get every live variant as MP3 (see async_resolve_media).
+            "mime": "audio/mpeg",
             "seekable": False,
         }
     if len(parts) != 2 or parts[0] != "ep":

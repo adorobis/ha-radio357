@@ -135,6 +135,10 @@ class Radio357MediaSource(MediaSource):
         """Return the proxied audio URL."""
         parts = [unquote(p) for p in (item.identifier or "").split("/")]
         if len(parts) == 2 and parts[0] == "live" and parts[1] in LIVE_STREAMS:
+            # Media players get the AAC variants as MP3 (raw ADTS HE-AAC isn't
+            # widely supported); the browser plays the original.
+            if item.target_media_player and LIVE_STREAMS[parts[1]][2] == "audio/aac":
+                return PlayMedia(audio_path("live", parts[1], mp3=True), AUDIO_MPEG)
             return PlayMedia(audio_path("live", parts[1]), LIVE_STREAMS[parts[1]][2])
         if len(parts) == 2 and parts[0] == "ep" and parts[1].isdigit():
             try:
